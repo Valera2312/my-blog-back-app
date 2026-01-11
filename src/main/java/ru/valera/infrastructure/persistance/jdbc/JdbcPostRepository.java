@@ -8,6 +8,8 @@ import ru.valera.domain.comment.CommentId;
 import ru.valera.domain.post.Post;
 import ru.valera.domain.post.PostId;
 import ru.valera.domain.repository.PostRepository;
+import ru.valera.domain.search.PageRequest;
+import ru.valera.domain.search.PostSearchCriteria;
 import ru.valera.domain.tag.Tag;
 import ru.valera.domain.tag.TagId;
 
@@ -290,4 +292,99 @@ public class JdbcPostRepository implements PostRepository {
             }
         }
     }
+
+    @Override
+    public long countBy(PostSearchCriteria criteria) {
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT COUNT(*) FROM comments p
+                LEFT JOIN post_tags pt ON pt.post_id = p.id
+                LEFT JOIN tags t ON t.id = pt.tag_id
+                WHERE 1=1
+                """);
+
+        List<Object> params = new ArrayList<>();
+        fillParams(params, criteria, sql);
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+            return rs.getLong(1);
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Post> findBy(PostSearchCriteria criteria, PageRequest page) {
+
+        StringBuilder sql = new StringBuilder("""
+            SELECT DISTINCT p.id, p.title, p.text, p.likes_count, p.created_at, p.updated_at
+            FROM posts p
+            LEFT JOIN post_tags pt ON pt.post_id = p.id
+            LEFT JOIN tags t ON t.id = pt.tag_id
+            WHERE 1=1
+            """);
+        List<Object> params = new ArrayList<>();
+        fillParams(params, criteria, sql);
+
+        if (page != null) {
+            sql.append(" ORDER BY p.created_at DESC LIMIT ? OFFSET ?");
+            params.add(page.page());
+            params.add(page.size());
+        }
+
+        final List<Post> posts = new ArrayList<>();
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                PostId postId = PostId.of(rs.getLong("id"));
+                posts.add(Post.fromDatabase(
+                        postId,
+                        rs.getString("title"),
+                        rs.getString("text"),
+                        rs.getInt("likes_count"),
+                        rs.getTimestamp("created_at").toLocalDateTime(),
+                        rs.getTimestamp("updated_at").toLocalDateTime(),
+                        null,
+                        List.of(),
+                        Set.of()
+                ));
+            }
+            return posts;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void fillParams(List<Object> params, PostSearchCriteria criteria, StringBuilder sql) {
+
+        if (!criteria.title().isEmpty()) {
+            sql.append(" AND t.name IN (")
+                    .append("?, ".repeat(criteria.tags().size() - 1))
+                    .append("?)");
+            criteria.tags().forEach(t -> params.add(t.value()));
+        }
+
+        if (!criteria.tags().isEmpty()) {
+            sql.append(" AND t.name IN (")
+                    .append("?, ".repeat(criteria.tags().size() - 1))
+                    .append("?)");
+            criteria.tags().forEach(t -> params.add(t.value()));
+        }
+    }
+
+
 }
