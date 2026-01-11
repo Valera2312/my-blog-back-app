@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+    annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
     implementation("org.mapstruct:mapstruct:${mapstructVersion}")
 
     implementation("com.zaxxer:HikariCP:7.0.2")

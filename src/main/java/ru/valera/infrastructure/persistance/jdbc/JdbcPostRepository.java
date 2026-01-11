@@ -96,7 +96,6 @@ public class JdbcPostRepository implements PostRepository {
         try (Connection conn = getConnection()) {
             if (post.getId() == null) {
                 long id = insertPost(conn, post);
-                persistChildren(conn, post);
                 return findById(PostId.of(id)).orElseThrow();
             } else {
                 updatePost(conn, post);

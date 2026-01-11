@@ -23,7 +23,12 @@ public class Post {
     private final List<Comment> comments;
     private final Set<Tag> tags;
     
-    public static Post create(String title, String text) {
+    public static Post create(String title, String text, Set<Tag> tags) {
+
+        Objects.requireNonNull(title, "title cannot be null");
+        Objects.requireNonNull(text, "text cannot be null");
+        Objects.requireNonNull(tags, "tags cannot be null");
+
         return new Post(
                 null,
                 title,
@@ -33,7 +38,7 @@ public class Post {
                 LocalDateTime.now(),
                 null,
                 new ArrayList<>(),
-                new HashSet<>());
+                tags);
     }
 
     public static Post fromDatabase(

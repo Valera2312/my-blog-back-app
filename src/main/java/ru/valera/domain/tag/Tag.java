@@ -20,4 +20,7 @@ public class Tag {
     public String getName() {
         return name;
     }
+    public static Tag create(TagId id, String name) {
+        return new Tag(id, name);
+    }
 }
