@@ -19,7 +19,7 @@ repositories {
 dependencies {
 
     implementation("com.zaxxer:HikariCP:7.0.2")
-
+    implementation("org.springframework:spring-jdbc:${springVersion}")
     implementation("org.springframework:spring-context:${springVersion}")
     implementation("org.springframework:spring-webmvc:${springVersion}")
 

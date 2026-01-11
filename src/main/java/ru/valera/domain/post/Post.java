@@ -43,8 +43,8 @@ public class Post {
             int likesCount,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            List<Comment> comments,
             Image image,
+            List<Comment> comments,
             Set<Tag> tags) {
 
         Objects.requireNonNull(id, "id cannot be null when loading from database");
