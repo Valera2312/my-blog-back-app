@@ -73,7 +73,7 @@ public class JdbcPostRepository implements PostRepository {
 
             List<Comment> comments = loadComments(conn, id.getValue());
             Set<Tag> tags = loadTags(conn, id.getValue());
-            Image image = loadImage(conn, id.getValue());
+            //Image image = loadImage(conn, id.getValue());
 
             return Optional.of(Post.fromDatabase(
                     id,
@@ -82,8 +82,8 @@ public class JdbcPostRepository implements PostRepository {
                     base.getLikesCount(),
                     base.getCreatedAt(),
                     base.getUpdatedAt(),
-                    image,
-                    comments,
+                    null,
+                    List.of(),
                     tags
             ));
         } catch (SQLException e) {
@@ -385,6 +385,4 @@ public class JdbcPostRepository implements PostRepository {
             criteria.tags().forEach(t -> params.add(t.value()));
         }
     }
-
-
 }
