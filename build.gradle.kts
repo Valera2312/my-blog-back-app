@@ -7,6 +7,7 @@ val jettyVersion = "12.1.5"
 val jakartaServletVersion = "6.1.0"
 val jacksonVersion = "2.17.2"
 val slf4jVersion = "2.0.17"
+var mapstructVersion = "1.6.3"
 
 
 group = "ru.valera"
@@ -17,6 +18,8 @@ repositories {
 }
 
 dependencies {
+    implementation("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+    implementation("org.mapstruct:mapstruct:${mapstructVersion}")
 
     implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.springframework:spring-jdbc:${springVersion}")
