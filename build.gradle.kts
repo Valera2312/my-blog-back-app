@@ -6,7 +6,6 @@ val springVersion = "7.0.2"
 val jettyVersion = "12.1.5"
 val jakartaServletVersion = "6.1.0"
 val jacksonVersion = "2.17.2"
-val slf4jVersion = "2.0.17"
 var mapstructVersion = "1.6.3"
 
 
@@ -35,8 +34,7 @@ dependencies {
 
     compileOnly("jakarta.servlet:jakarta.servlet-api:${jakartaServletVersion}")
 
-    implementation("org.slf4j:slf4j-simple:${slf4jVersion}")
-
+    implementation("ch.qos.logback:logback-classic:1.5.24")
     implementation("org.postgresql:postgresql:42.7.8")
 
     compileOnly("org.projectlombok:lombok:1.18.42")

@@ -1,4 +1,4 @@
-package ru.valera.infrastructure.persistance.jdbc;
+package ru.valera.infrastructure.persistance.jdbc.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.Bean;

@@ -39,10 +39,10 @@ public class JdbcPostRepository implements PostRepository {
                 """;
 
         List<Post> posts = new ArrayList<>();
-        try (Connection conn = getConnection();
+        final Connection conn = getConnection();
+        try (
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-
             while (rs.next()) {
                 PostId postId = PostId.of(rs.getLong("id"));
                 posts.add(Post.fromDatabase(
@@ -66,8 +66,8 @@ public class JdbcPostRepository implements PostRepository {
 
     @Override
     public Optional<Post> findById(PostId id) {
-        try (Connection conn = getConnection()) {
-
+        final Connection conn = getConnection();
+        try {
             Post base = loadPost(conn, id.getValue());
             if (base == null) return Optional.empty();
 
@@ -93,7 +93,8 @@ public class JdbcPostRepository implements PostRepository {
 
     @Override
     public Post save(Post post) {
-        try (Connection conn = getConnection()) {
+        final Connection conn = getConnection();
+        try {
             if (post.getId() == null) {
                 long id = insertPost(conn, post);
                 return findById(PostId.of(id)).orElseThrow();
@@ -110,8 +111,8 @@ public class JdbcPostRepository implements PostRepository {
     @Override
     public void delete(PostId id) {
         String sql = "DELETE FROM posts WHERE id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        final Connection conn = getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id.getValue());
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -304,10 +305,8 @@ public class JdbcPostRepository implements PostRepository {
 
         List<Object> params = new ArrayList<>();
         fillParams(params, criteria, sql);
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
+        final Connection conn = getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
@@ -339,8 +338,8 @@ public class JdbcPostRepository implements PostRepository {
         }
 
         final List<Post> posts = new ArrayList<>();
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        final Connection conn = getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));

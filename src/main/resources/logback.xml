@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- формат логов -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- уровень по умолчанию -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Spring транзакции -->
+    <logger name="org.springframework.transaction" level="DEBUG"/>
+
+    <!-- DataSourceUtils / connection binding -->
+    <logger name="org.springframework.jdbc.datasource" level="DEBUG"/>
+
+    <!-- JDBC template / SQL -->
+    <logger name="org.springframework.jdbc.core" level="DEBUG"/>
+
+</configuration>
