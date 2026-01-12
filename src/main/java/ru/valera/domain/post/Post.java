@@ -185,7 +185,7 @@ public class Post {
     public int getLikesCount() { return likesCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public Optional<Image> getCoverImage() { return Optional.ofNullable(image); }
+    public Optional<Image> getImage() { return Optional.ofNullable(image); }
     public List<Comment> getComments() { return Collections.unmodifiableList(comments); }
     public Set<Tag> getTags() { return Collections.unmodifiableSet(tags); }
 

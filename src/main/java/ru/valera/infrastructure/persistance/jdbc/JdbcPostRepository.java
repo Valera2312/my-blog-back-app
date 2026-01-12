@@ -71,7 +71,7 @@ public class JdbcPostRepository implements PostRepository {
             Post base = loadPost(conn, id.getValue());
             if (base == null) return Optional.empty();
 
-            List<Comment> comments = loadComments(conn, id.getValue());
+            //List<Comment> comments = loadComments(conn, id.getValue());
             Set<Tag> tags = loadTags(conn, id.getValue());
             //Image image = loadImage(conn, id.getValue());
 
@@ -97,7 +97,19 @@ public class JdbcPostRepository implements PostRepository {
         try {
             if (post.getId() == null) {
                 long id = insertPost(conn, post);
-                return findById(PostId.of(id)).orElseThrow();
+                Post savedPost = Post.fromDatabase(
+                        PostId.of(id),
+                        post.getTitle(),
+                        post.getText(),
+                        post.getLikesCount(),
+                        post.getCreatedAt(),
+                        post.getUpdatedAt(),
+                        post.getImage().orElse(null),
+                        post.getComments(),
+                        post.getTags()
+                );
+                persistTags(conn, savedPost);
+                return savedPost;
             } else {
                 updatePost(conn, post);
                 persistChildren(conn, post);
@@ -282,8 +294,8 @@ public class JdbcPostRepository implements PostRepository {
             delete.setLong(1, post.getId().getValue());
             delete.executeUpdate();
         }
-        if (post.getCoverImage().isPresent()) {
-            Image image = post.getCoverImage().get();
+        if (post.getImage().isPresent()) {
+            Image image = post.getImage().get();
             try (PreparedStatement insert = conn.prepareStatement(
                     "INSERT INTO images(post_id, url) VALUES (?, ?)")) {
                 insert.setLong(1, post.getId().getValue());
