@@ -13,6 +13,7 @@ import ru.valera.domain.repository.PostRepository;
 import ru.valera.domain.search.PageRequest;
 import ru.valera.domain.search.PostSearchCriteria;
 import ru.valera.domain.search.TagName;
+import ru.valera.domain.tag.Tag;
 
 import java.util.Arrays;
 import java.util.List;
@@ -60,6 +61,18 @@ public class PostService {
                 .hasPrev(hasPrev)
                 .hasNext(hasNext)
                 .build();
+    }
+
+    @Transactional
+    public PostDto updatePost(final Long postId, final PostDto postDto) {
+        Post post = postRepository.findById(PostId.of(postId))
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        Set<Tag> tags = postDto.tags()
+                .stream()
+                .map(tag -> Tag.create(null, tag))
+                .collect(Collectors.toSet());
+        post.updateContent(postDto.title(), postDto.text(), tags);
+        return postMapper.toPostDto(postRepository.save(post));
     }
 
     private Set<String> extractTitles(String search) {

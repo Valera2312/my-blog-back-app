@@ -29,4 +29,9 @@ public class PostController {
                                            @RequestParam int pageSize) {
         return postService.getPosts(search, pageNumber, pageSize);
     }
+
+    @PutMapping("posts/{id}")
+    public PostDto updatePost(@PathVariable Long id, @RequestBody PostDto postDto) {
+       return postService.updatePost(id, postDto);
+    }
 }

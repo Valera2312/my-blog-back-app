@@ -1,5 +1,9 @@
 package ru.valera.infrastructure.persistance.jdbc;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;
 import ru.valera.domain.Image.Image;
@@ -16,6 +20,7 @@ import ru.valera.domain.tag.TagId;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 public class JdbcPostRepository implements PostRepository {
@@ -340,32 +345,32 @@ public class JdbcPostRepository implements PostRepository {
     public List<Post> findBy(PostSearchCriteria criteria, PageRequest page) {
 
         StringBuilder sql = new StringBuilder("""
-            SELECT DISTINCT p.id, p.title, p.text, p.likes_count, p.comments_count, p.created_at, p.updated_at
-            FROM posts p
-            LEFT JOIN post_tags pt ON pt.post_id = p.id
-            LEFT JOIN tags t ON t.id = pt.tag_id
-            WHERE 1=1
-            """);
+               SELECT p.id AS post_id, p.title, p.text, p.likes_count, p.comments_count,
+                      p.created_at, p.updated_at,
+                      json_agg(json_build_object('id', t.id, 'name', t.name)) AS tags
+               FROM posts p
+                         LEFT JOIN post_tags pt ON pt.post_id = p.id
+                         LEFT JOIN tags t ON t.id = pt.tag_id
+               WHERE 1=1""");
+
         List<Object> params = new ArrayList<>();
         fillParams(params, criteria, sql);
-
+        sql.append(" GROUP BY p.id");
         if (page != null) {
             sql.append(" ORDER BY p.created_at DESC LIMIT ? OFFSET ?");
             params.add(page.size());
             params.add(page.offset());
         }
-
         final List<Post> posts = new ArrayList<>();
         final Connection conn = getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (PreparedStatement ps = conn.prepareStatement(String.valueOf(sql))) {
 
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
             ResultSet rs = ps.executeQuery();
-
             while (rs.next()) {
-                PostId postId = PostId.of(rs.getLong("id"));
+                PostId postId = PostId.of(rs.getLong("post_id"));
                 posts.add(Post.fromDatabase(
                         postId,
                         rs.getString("title"),
@@ -376,14 +381,26 @@ public class JdbcPostRepository implements PostRepository {
                         rs.getTimestamp("updated_at").toLocalDateTime(),
                         null,
                         List.of(),
-                        Set.of()
+                        extracted(rs.getString("tags"))
                 ));
             }
             return posts;
 
-        } catch (SQLException e) {
+        } catch (SQLException | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Set<Tag> extracted(String tagsJson) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, Object>> tagList = mapper.readValue(tagsJson, new TypeReference<>() {});
+        return tagList.stream()
+                .filter(m -> m.get("id") != null)
+                .map(m -> new Tag(
+                        TagId.of(((Number) m.get("id")).longValue()),
+                        (String) m.get("name")
+                ))
+                .collect(Collectors.toSet());
     }
 
     private void fillParams(List<Object> params, PostSearchCriteria criteria, StringBuilder sql) {
