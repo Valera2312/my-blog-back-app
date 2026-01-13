@@ -1,5 +1,6 @@
 package ru.valera.infrastructure.web;
 
+import jakarta.servlet.MultipartConfigElement;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
@@ -27,6 +28,9 @@ public class EmbeddedJettySpringApp {
         dispatcher.setInitOrder(1);
         context.addServlet(dispatcher, "/*");
 
+       dispatcher.getRegistration().setMultipartConfig(
+               new MultipartConfigElement(null,
+                       10_000_000, 20_000_000, 0));
         server.setHandler(context);
 
         server.start();

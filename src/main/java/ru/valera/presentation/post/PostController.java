@@ -1,7 +1,10 @@
 package ru.valera.presentation.post;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.valera.application.PostService;
 import ru.valera.application.dto.PageResultDto;
 import ru.valera.application.dto.PostDto;
@@ -43,5 +46,12 @@ public class PostController {
     @PostMapping("posts/{id}/likes")
     public long like(@PathVariable Long id) {
        return postService.like(id);
+    }
+
+    @PutMapping(value = "/posts/{id}/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Object> updatePostImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
+        postService.updateImage(id, image);
+        return ResponseEntity.ok().build();
     }
 }

@@ -1,28 +1,35 @@
 package ru.valera.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ru.valera.application.dto.PageResultDto;
 import ru.valera.application.dto.PostDto;
 import ru.valera.application.mapper.PostMapper;
 import ru.valera.domain.post.Post;
 import ru.valera.domain.post.PostId;
-import ru.valera.domain.repository.PostQueryRepository;
 import ru.valera.domain.repository.PostRepository;
 import ru.valera.domain.search.PageRequest;
 import ru.valera.domain.search.PostSearchCriteria;
 import ru.valera.domain.search.TagName;
 import ru.valera.domain.tag.Tag;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PostService {
 
     private final PostRepository postRepository;
@@ -90,6 +97,18 @@ public class PostService {
         return post.getLikesCount();
     }
 
+    @Transactional
+    public void updateImage(final Long postId, final MultipartFile image) {
+        Post post = postRepository.findById(PostId.of(postId))
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        try {
+            saveBytesToFile(image.getOriginalFilename(), image.getBytes());
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+        postRepository.save(post);
+    }
+
     private Set<String> extractTitles(String search) {
         return Arrays.stream(search.split("\\s+"))
                 .filter(s -> !s.startsWith("#"))
@@ -102,5 +121,21 @@ public class PostService {
                 .filter(s -> s.startsWith("#"))
                 .map(TagName::new)
                 .collect(Collectors.toSet());
+    }
+
+    public static void saveBytesToFile(String filePath, byte[] data) throws IOException, URISyntaxException {
+        Path path = Paths.get(
+                Objects.requireNonNull(
+                        PostService.class.getClassLoader().getResource("images")).toURI()
+        );
+        Path baseDir = Paths.get(path.toUri()).toRealPath();
+        Path userPath = baseDir.resolve(Objects.requireNonNull(filePath)).normalize();
+
+        try (FileOutputStream fos = new FileOutputStream(userPath.toString())) {
+            fos.write(data);
+            System.out.println("Image successfully saved: " + filePath);
+        } catch (IOException e) {
+           log.error(e.getMessage());
+        }
     }
 }
