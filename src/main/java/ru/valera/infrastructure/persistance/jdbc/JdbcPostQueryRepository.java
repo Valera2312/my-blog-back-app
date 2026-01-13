@@ -32,10 +32,8 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
     @Override
     public int countComments(PostId postId) {
         String sql = "SELECT COUNT(*) FROM comments WHERE post_id = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        Connection conn = getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
             ResultSet rs = ps.executeQuery();
             rs.next();
@@ -49,9 +47,8 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
     @Override
     public Comment findComment(PostId postId, CommentId page) {
         String sql = "SELECT id, post_id, text FROM comments WHERE post_id = ? AND id = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        Connection conn = getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
             ps.setLong(2, page.getValue());
             ResultSet rs = ps.executeQuery();
@@ -67,8 +64,8 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
     @Override
     public List<Comment> findComments(PostId postId) {
         String sql = "SELECT id, post_id, text FROM comments WHERE post_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        Connection conn = getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
             ResultSet rs = ps.executeQuery();
 
@@ -86,9 +83,9 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
 
     @Override
     public Image findImage(PostId postId) {
+        Connection conn = getConnection();
         String sql = "SELECT url FROM images WHERE post_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
             ResultSet rs = ps.executeQuery();
             String url = rs.getString("url");
