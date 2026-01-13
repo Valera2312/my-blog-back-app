@@ -33,7 +33,7 @@ public class JdbcPostRepository implements PostRepository {
     @Override
     public List<Post> findAll() {
         String sql = """
-                SELECT id, title, text, likes_count, created_at, updated_at
+                SELECT id, title, text, comments_count, likes_count, created_at, updated_at
                 FROM posts
                 ORDER BY created_at DESC
                 """;
@@ -49,6 +49,7 @@ public class JdbcPostRepository implements PostRepository {
                         postId,
                         rs.getString("title"),
                         rs.getString("text"),
+                        rs.getInt("comments_count"),
                         rs.getInt("likes_count"),
                         rs.getTimestamp("created_at").toLocalDateTime(),
                         rs.getTimestamp("updated_at").toLocalDateTime(),
@@ -79,6 +80,7 @@ public class JdbcPostRepository implements PostRepository {
                     id,
                     base.getTitle(),
                     base.getText(),
+                    base.getCommentsCount(),
                     base.getLikesCount(),
                     base.getCreatedAt(),
                     base.getUpdatedAt(),
@@ -101,6 +103,7 @@ public class JdbcPostRepository implements PostRepository {
                         PostId.of(id),
                         post.getTitle(),
                         post.getText(),
+                        post.getCommentsCount(),
                         post.getLikesCount(),
                         post.getCreatedAt(),
                         post.getUpdatedAt(),
@@ -135,15 +138,16 @@ public class JdbcPostRepository implements PostRepository {
     // ---------------- Post CRUD ----------------
     private long insertPost(Connection conn, Post post) throws SQLException {
         String sql = """
-                INSERT INTO posts (title, text, likes_count, created_at, updated_at)
+                INSERT INTO posts (title, text, comments_count, likes_count, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, post.getTitle());
             ps.setString(2, post.getText());
-            ps.setInt(3, post.getLikesCount());
-            ps.setTimestamp(4, Timestamp.valueOf(post.getCreatedAt()));
-            ps.setTimestamp(5, Timestamp.valueOf(post.getUpdatedAt()));
+            ps.setInt(3, post.getCommentsCount());
+            ps.setInt(4, post.getLikesCount());
+            ps.setTimestamp(5, Timestamp.valueOf(post.getCreatedAt()));
+            ps.setTimestamp(6, Timestamp.valueOf(post.getUpdatedAt()));
             ps.executeUpdate();
 
             ResultSet keys = ps.getGeneratedKeys();
@@ -170,7 +174,7 @@ public class JdbcPostRepository implements PostRepository {
 
     private Post loadPost(Connection conn, long id) throws SQLException {
         String sql = """
-                SELECT title, text, likes_count, created_at, updated_at
+                SELECT title, text, comments_count, likes_count, created_at, updated_at
                 FROM posts WHERE id = ?
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -182,6 +186,7 @@ public class JdbcPostRepository implements PostRepository {
                     PostId.of(id),
                     rs.getString("title"),
                     rs.getString("text"),
+                    rs.getInt("comments_count"),
                     rs.getInt("likes_count"),
                     rs.getTimestamp("created_at").toLocalDateTime(),
                     rs.getTimestamp("updated_at").toLocalDateTime(),
@@ -334,7 +339,7 @@ public class JdbcPostRepository implements PostRepository {
     public List<Post> findBy(PostSearchCriteria criteria, PageRequest page) {
 
         StringBuilder sql = new StringBuilder("""
-            SELECT DISTINCT p.id, p.title, p.text, p.likes_count, p.created_at, p.updated_at
+            SELECT DISTINCT p.id, p.title, p.text, p.likes_count, p.comments_count, p.created_at, p.updated_at
             FROM posts p
             LEFT JOIN post_tags pt ON pt.post_id = p.id
             LEFT JOIN tags t ON t.id = pt.tag_id
@@ -364,6 +369,7 @@ public class JdbcPostRepository implements PostRepository {
                         postId,
                         rs.getString("title"),
                         rs.getString("text"),
+                        rs.getInt("comments_count"),
                         rs.getInt("likes_count"),
                         rs.getTimestamp("created_at").toLocalDateTime(),
                         rs.getTimestamp("updated_at").toLocalDateTime(),

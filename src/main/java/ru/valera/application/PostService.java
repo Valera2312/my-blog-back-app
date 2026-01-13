@@ -30,15 +30,14 @@ public class PostService {
     public PostDto createPost(final PostDto postDto) {
         Post post = postMapper.createPost(postDto);
         postRepository.save(post);
-        return postMapper.toPostDto(post, 0);
+        return postMapper.toPostDto(post);
     }
 
     @Transactional(readOnly = true)
     public PostDto getPostById(final Long postId) {
         Post post = postRepository.findById(PostId.of(postId))
                 .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
-        int commentsCount = postQueryRepository.countComments(PostId.of(postId));
-        return postMapper.toPostDto(post, commentsCount);
+        return postMapper.toPostDto(post);
     }
 
     @Transactional(readOnly = true)

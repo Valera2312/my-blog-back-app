@@ -13,10 +13,10 @@ import java.util.Set;
 @Component
 public interface PostMapper {
 
-    @Mapping(target = "commentsCount", expression = "java(commentCount)")
+
     @Mapping(target = "id", source = "post.id.value")
     @Mapping(target = "tags", expression = "java(mapTagsToStrings(post.getTags()))")
-    PostDto toPostDto(Post post, @Context int commentCount);
+    PostDto toPostDto(Post post);
 
     @Mapping(target = "comments", ignore = true)
     @Mapping(target = "tags", expression = "java(mapStringsToTags(postDto.tags()))")

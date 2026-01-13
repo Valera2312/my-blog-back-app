@@ -14,6 +14,7 @@ public class Post {
     private final PostId id;
     private String title;
     private String text;
+    private int commentsCount;
     private int likesCount;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -34,6 +35,7 @@ public class Post {
                 title,
                 text,
                 0,
+                0,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
                 null,
@@ -45,6 +47,7 @@ public class Post {
             PostId id,
             String title,
             String text,
+            int commentsCount,
             int likesCount,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
@@ -60,6 +63,7 @@ public class Post {
                 id,
                 title,
                 text,
+                commentsCount,
                 likesCount,
                 createdAt,
                 updatedAt,
@@ -73,6 +77,7 @@ public class Post {
             PostId id,
             String title,
             String text,
+            int commentsCount,
             int likesCount,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
@@ -83,12 +88,13 @@ public class Post {
         this.id = id;
         this.title = Objects.requireNonNull(title, "title cannot be null");
         this.text = Objects.requireNonNull(text, "text cannot be null");
+        this.commentsCount = commentsCount;
         this.likesCount = Math.max(0, likesCount);
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
         this.image = image;
         this.comments = comments;
-        this.tags = Objects.requireNonNull(tags);;
+        this.tags = Objects.requireNonNull(tags);
     }
 
     // ── Update Content ─────────────────────────────────────────────────
@@ -122,6 +128,7 @@ public class Post {
         Comment comment = Comment.create(null, text);
         comments.add(comment);
         touch();
+        this.commentsCount++;
         return comment;
     }
 
@@ -141,6 +148,7 @@ public class Post {
         if (removed) {
             touch();
         }
+        this.commentsCount--;
     }
 
     // ── Image ──────────────────────────────────────────────────────────
@@ -182,6 +190,7 @@ public class Post {
     public PostId getId() { return id; }
     public String getTitle() { return title; }
     public String getText() { return text; }
+    public int getCommentsCount() { return commentsCount; }
     public int getLikesCount() { return likesCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
