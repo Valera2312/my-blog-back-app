@@ -15,6 +15,7 @@ import ru.valera.domain.search.PostSearchCriteria;
 import ru.valera.domain.search.TagName;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -23,7 +24,6 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private final PostRepository postRepository;
-    private final PostQueryRepository postQueryRepository;
     private final PostMapper postMapper;
 
     @Transactional
@@ -42,17 +42,30 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public PageResultDto<PostDto> getPosts(final String search, final int pageNumber, final int pageSize) {
-        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize);
+        PageRequest page = PageRequest.of(pageNumber, pageSize);
         PostSearchCriteria criteria = new PostSearchCriteria(extractTitles(search), extractTags(search));
 
-        //List<PostDto> postDtos = postRepository.findBy(criteria, pageRequest);
-        //TODO
-        return null;
+        List<PostDto> postDtos = postRepository
+                .findBy(criteria, page).stream()
+                .map(postMapper::toPostDto)
+                .toList();
+        long total = postRepository.countBy(criteria);
+        long lastPage = (long) Math.ceil((double) total / page.size());
+        boolean hasPrev = page.page() > 1;
+        boolean hasNext = page.page() + 1 < lastPage;
+
+        return PageResultDto.<PostDto>builder()
+                .items(postDtos)
+                .lastPage(lastPage)
+                .hasPrev(hasPrev)
+                .hasNext(hasNext)
+                .build();
     }
 
     private Set<String> extractTitles(String search) {
         return Arrays.stream(search.split("\\s+"))
                 .filter(s -> !s.startsWith("#"))
+                .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
     }
 

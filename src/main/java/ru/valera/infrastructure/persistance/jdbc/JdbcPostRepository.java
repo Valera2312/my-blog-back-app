@@ -139,7 +139,7 @@ public class JdbcPostRepository implements PostRepository {
     private long insertPost(Connection conn, Post post) throws SQLException {
         String sql = """
                 INSERT INTO posts (title, text, comments_count, likes_count, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, post.getTitle());
@@ -314,7 +314,8 @@ public class JdbcPostRepository implements PostRepository {
     public long countBy(PostSearchCriteria criteria) {
 
         StringBuilder sql = new StringBuilder("""
-                SELECT COUNT(*) FROM comments p
+                SELECT COUNT(*)
+                FROM posts p
                 LEFT JOIN post_tags pt ON pt.post_id = p.id
                 LEFT JOIN tags t ON t.id = pt.tag_id
                 WHERE 1=1
@@ -350,8 +351,8 @@ public class JdbcPostRepository implements PostRepository {
 
         if (page != null) {
             sql.append(" ORDER BY p.created_at DESC LIMIT ? OFFSET ?");
-            params.add(page.page());
             params.add(page.size());
+            params.add(page.offset());
         }
 
         final List<Post> posts = new ArrayList<>();
@@ -387,13 +388,17 @@ public class JdbcPostRepository implements PostRepository {
 
     private void fillParams(List<Object> params, PostSearchCriteria criteria, StringBuilder sql) {
 
-        if (!criteria.title().isEmpty()) {
-            sql.append(" AND t.name IN (")
-                    .append("?, ".repeat(criteria.tags().size() - 1))
-                    .append("?)");
-            criteria.tags().forEach(t -> params.add(t.value()));
+        if (criteria.title() != null && !criteria.title().isEmpty()) {
+                sql.append(" AND (");
+                criteria.title().forEach(s -> {
+                    if (sql.charAt(sql.length() - 1) != '(') {
+                        sql.append(" OR ");
+                    }
+                    sql.append("p.title LIKE ?");
+                    params.add("%" + s + "%");
+                });
+                sql.append(")");
         }
-
         if (!criteria.tags().isEmpty()) {
             sql.append(" AND t.name IN (")
                     .append("?, ".repeat(criteria.tags().size() - 1))
