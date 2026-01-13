@@ -34,4 +34,14 @@ public class PostController {
     public PostDto updatePost(@PathVariable Long id, @RequestBody PostDto postDto) {
        return postService.updatePost(id, postDto);
     }
+
+    @DeleteMapping("posts/{id}")
+    public void deletePost(@PathVariable Long id) {
+        postService.deletePost(id);
+    }
+
+    @PostMapping("posts/{id}/likes")
+    public long like(@PathVariable Long id) {
+       return postService.like(id);
+    }
 }

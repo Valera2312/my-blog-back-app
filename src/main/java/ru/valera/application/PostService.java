@@ -17,6 +17,7 @@ import ru.valera.domain.tag.Tag;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -73,6 +74,20 @@ public class PostService {
                 .collect(Collectors.toSet());
         post.updateContent(postDto.title(), postDto.text(), tags);
         return postMapper.toPostDto(postRepository.save(post));
+    }
+
+    @Transactional
+    public void deletePost(final Long postId) {
+        postRepository.delete(PostId.of(postId));
+    }
+
+    @Transactional
+    public long like(final Long postId) {
+        Post post = postRepository.findById(PostId.of(postId))
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        post.like();
+        postRepository.save(post);
+        return post.getLikesCount();
     }
 
     private Set<String> extractTitles(String search) {
