@@ -28,11 +28,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Set;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.Arrays;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,8 +43,7 @@ public class PostService {
 
     @Transactional
     public PostDto createPost(final PostDto postDto) {
-        Post post = postMapper.createPost(postDto);
-        postRepository.save(post);
+        Post post = postRepository.save(postMapper.createPost(postDto));
         return postMapper.toPostDto(post);
     }
 
@@ -63,7 +58,6 @@ public class PostService {
     public PageResultDto<PostDto> getPosts(final String search, final int pageNumber, final int pageSize) {
         PageRequest page = PageRequest.of(pageNumber, pageSize);
         PostSearchCriteria criteria = new PostSearchCriteria(extractTitles(search), extractTags(search));
-
         List<PostDto> postDtos = postRepository
                 .findBy(criteria, page).stream()
                 .map(postMapper::toPostDto)
@@ -71,10 +65,13 @@ public class PostService {
         long total = postRepository.countBy(criteria);
         long lastPage = (long) Math.ceil((double) total / page.size());
         boolean hasPrev = page.page() > 1;
-        boolean hasNext = page.page() + 1 < lastPage;
-
+        boolean hasNext = page.page() < lastPage;
+        if (lastPage == page.page()) {
+            hasPrev = false;
+            hasNext = false;
+        }
         return PageResultDto.<PostDto>builder()
-                .items(postDtos)
+                .posts(postDtos)
                 .lastPage(lastPage)
                 .hasPrev(hasPrev)
                 .hasNext(hasNext)
@@ -111,19 +108,21 @@ public class PostService {
     public void updateImage(final Long postId, final MultipartFile image) {
         Post post = postRepository.findById(PostId.of(postId))
                 .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        post.updateImage(image.getOriginalFilename());
+        postRepository.save(post);
         try {
             saveBytesToFile(image.getOriginalFilename(), image.getBytes());
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
-        post.updateImage(image.getOriginalFilename());
-        postRepository.save(post);
     }
 
     @Transactional(readOnly = true)
     public byte[] getImage(final Long postId) {
-        final Image image = postQueryRepository.findImage(PostId.of(postId));
-        return findFile(image.getUrl());
+        final Optional<Image> image = postQueryRepository.findImage(PostId.of(postId));
+        return image
+               .map(image1 -> findFile(image1.getUrl()))
+               .orElse(new byte[]{});
     }
 
     @Transactional(readOnly = true)
@@ -176,6 +175,7 @@ public class PostService {
     private static Set<TagName> extractTags(String search) {
         return Arrays.stream(search.split("\\s+"))
                 .filter(s -> s.startsWith("#"))
+                .map(s -> s.substring(1))
                 .map(TagName::new)
                 .collect(Collectors.toSet());
     }

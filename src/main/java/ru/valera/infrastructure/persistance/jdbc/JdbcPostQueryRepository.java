@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class JdbcPostQueryRepository implements PostQueryRepository {
@@ -67,22 +68,20 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
     }
 
     @Override
-    public Image findImage(PostId postId) {
-        Connection conn = getConnection();
+    public Optional<Image> findImage(PostId postId) {
         String sql = "SELECT url FROM images WHERE post_id = ?";
+        Connection conn = getConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    String url = rs.getString("url");
-                    return Image.create(url);
+                if (!rs.next()) {
+                    return Optional.empty();
                 }
-                return null;
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
+                return Optional.of(Image.create(rs.getString("url")));
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
+
 }

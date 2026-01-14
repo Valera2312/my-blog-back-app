@@ -78,7 +78,7 @@ public class JdbcPostRepository implements PostRepository {
 
             List<Comment> comments = loadComments(conn, id.getValue());
             Set<Tag> tags = loadTags(conn, id.getValue());
-            //Image image = loadImage(conn, id.getValue());
+            Image image = loadImage(conn, id.getValue());
 
             return Optional.of(Post.fromDatabase(
                     id,
@@ -88,7 +88,7 @@ public class JdbcPostRepository implements PostRepository {
                     base.getLikesCount(),
                     base.getCreatedAt(),
                     base.getUpdatedAt(),
-                    null,
+                    image,
                     comments,
                     tags
             ));
@@ -163,7 +163,7 @@ public class JdbcPostRepository implements PostRepository {
     private void updatePost(Connection conn, Post post) throws SQLException {
         String sql = """
                 UPDATE posts
-                SET title = ?, text = ?, likes_count = ?, updated_at = ?
+                SET title = ?, text = ?, likes_count = ?, updated_at = ?, comments_count = ?
                 WHERE id = ?
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -171,7 +171,8 @@ public class JdbcPostRepository implements PostRepository {
             ps.setString(2, post.getText());
             ps.setInt(3, post.getLikesCount());
             ps.setTimestamp(4, Timestamp.valueOf(post.getUpdatedAt()));
-            ps.setLong(5, post.getId().getValue());
+            ps.setInt(5, post.getCommentsCount());
+            ps.setLong(6, post.getId().getValue());
             ps.executeUpdate();
         }
     }
