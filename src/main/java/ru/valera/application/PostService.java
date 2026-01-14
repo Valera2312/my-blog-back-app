@@ -8,8 +8,10 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.valera.application.dto.PageResultDto;
 import ru.valera.application.dto.PostDto;
 import ru.valera.application.mapper.PostMapper;
+import ru.valera.domain.Image.Image;
 import ru.valera.domain.post.Post;
 import ru.valera.domain.post.PostId;
+import ru.valera.domain.repository.PostQueryRepository;
 import ru.valera.domain.repository.PostRepository;
 import ru.valera.domain.search.PageRequest;
 import ru.valera.domain.search.PostSearchCriteria;
@@ -19,6 +21,7 @@ import ru.valera.domain.tag.Tag;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final PostQueryRepository  postQueryRepository;
     private final PostMapper postMapper;
 
     @Transactional
@@ -106,7 +110,14 @@ public class PostService {
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
+        post.updateImage(image.getOriginalFilename());
         postRepository.save(post);
+    }
+
+    @Transactional
+    public byte[] getImage(final Long postId) {
+        final Image image = postQueryRepository.findImage(PostId.of(postId));
+        return findFile(image.getUrl());
     }
 
     private Set<String> extractTitles(String search) {
@@ -123,17 +134,32 @@ public class PostService {
                 .collect(Collectors.toSet());
     }
 
-    public static void saveBytesToFile(String filePath, byte[] data) throws IOException, URISyntaxException {
+    private static byte[] findFile(String fileName) {
+        try {
+            Path targetPath = pathTraversalProtection(fileName);
+            return Files.readAllBytes(targetPath);
+        } catch (URISyntaxException | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Path pathTraversalProtection(String fileName) throws URISyntaxException, IOException {
         Path path = Paths.get(
                 Objects.requireNonNull(
-                        PostService.class.getClassLoader().getResource("images")).toURI()
-        );
-        Path baseDir = Paths.get(path.toUri()).toRealPath();
-        Path userPath = baseDir.resolve(Objects.requireNonNull(filePath)).normalize();
+                        PostService.class.getClassLoader().getResource("images")).toURI());
+        Path realBaseDir = Paths.get(path.toUri()).toRealPath();
+        Path targetPath = realBaseDir.resolve(Objects.requireNonNull(fileName)).normalize();
+        if (!targetPath.startsWith(realBaseDir)) {
+            throw new SecurityException("Path traversal attempt: " + fileName);
+        }
+        return targetPath;
+    }
 
-        try (FileOutputStream fos = new FileOutputStream(userPath.toString())) {
+    private static void saveBytesToFile(String fileName, byte[] data) throws IOException, URISyntaxException {
+        Path targetPath = pathTraversalProtection(fileName);
+        try (FileOutputStream fos = new FileOutputStream(targetPath.toString())) {
             fos.write(data);
-            System.out.println("Image successfully saved: " + filePath);
+            System.out.println("Image successfully saved: " + fileName);
         } catch (IOException e) {
            log.error(e.getMessage());
         }

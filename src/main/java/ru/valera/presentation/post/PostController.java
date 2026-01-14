@@ -6,8 +6,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.valera.application.PostService;
+import ru.valera.application.dto.CommentDto;
 import ru.valera.application.dto.PageResultDto;
 import ru.valera.application.dto.PostDto;
+
+import java.util.Collection;
 
 @RestController
 @RequestMapping("/api")
@@ -54,4 +57,19 @@ public class PostController {
         postService.updateImage(id, image);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping(value = "/posts/{id}/image")
+    public ResponseEntity<byte[]> getPostImage(@PathVariable Long id) {
+        byte[] image = postService.getImage(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .contentLength(image.length)
+                .body(image);
+    }
+
+    @GetMapping(value = "/posts/{id}/comments")
+    public Collection<CommentDto> getComments(@PathVariable Long id) {
+        return null;
+    }
+
 }

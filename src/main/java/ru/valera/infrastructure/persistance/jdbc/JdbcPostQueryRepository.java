@@ -87,9 +87,15 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
         String sql = "SELECT url FROM images WHERE post_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
-            ResultSet rs = ps.executeQuery();
-            String url = rs.getString("url");
-            return Image.create(url);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String url = rs.getString("url");
+                    return Image.create(url);
+                }
+                return null;
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
