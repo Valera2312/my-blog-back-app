@@ -5,10 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import ru.valera.application.dto.CommentDto;
 import ru.valera.application.dto.PageResultDto;
 import ru.valera.application.dto.PostDto;
+import ru.valera.application.mapper.CommentMapper;
 import ru.valera.application.mapper.PostMapper;
 import ru.valera.domain.Image.Image;
+import ru.valera.domain.comment.Comment;
+import ru.valera.domain.comment.CommentId;
 import ru.valera.domain.post.Post;
 import ru.valera.domain.post.PostId;
 import ru.valera.domain.repository.PostQueryRepository;
@@ -24,10 +28,11 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +43,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostQueryRepository  postQueryRepository;
     private final PostMapper postMapper;
+    private final CommentMapper commentMapper;
 
     @Transactional
     public PostDto createPost(final PostDto postDto) {
@@ -114,10 +120,50 @@ public class PostService {
         postRepository.save(post);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public byte[] getImage(final Long postId) {
         final Image image = postQueryRepository.findImage(PostId.of(postId));
         return findFile(image.getUrl());
+    }
+
+    @Transactional(readOnly = true)
+    public Collection<CommentDto> getComments(final Long postId) {
+        return postQueryRepository.findComments(PostId.of(postId))
+                .stream()
+                .map(comment -> commentMapper.toCommentDto(comment, postId))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CommentDto getComment(final Long postId, final Long commentId) {
+        Comment comment = postQueryRepository.findComment(PostId.of(postId), CommentId.of(commentId));
+        return commentMapper.toCommentDto(comment, postId);
+    }
+
+    @Transactional
+    public CommentDto updateComment(final Long postId, final Long commentId, final CommentDto commentDto) {
+        Post post = postRepository.findById(PostId.of(postId))
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        post.editComment(commentMapper.toComment(commentDto));
+        postRepository.save(post);
+        return commentDto;
+    }
+
+    @Transactional
+    public CommentDto addComment(final Long postId, final CommentDto commentDto) {
+        Post post = postRepository.findById(PostId.of(postId))
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        Comment comment = post.addComment(commentDto.text());
+        postRepository.save(post);
+        return commentMapper.toCommentDto(comment, postId);
+    }
+
+    @Transactional
+    public void deleteComment(final Long postId, final Long commentId) {
+        Post post = postRepository.findById(PostId.of(postId))
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        post.removeComment(CommentId.of(commentId));
+        postRepository.save(post);
     }
 
     private Set<String> extractTitles(String search) {

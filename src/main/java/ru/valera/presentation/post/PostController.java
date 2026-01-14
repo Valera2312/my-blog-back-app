@@ -1,6 +1,7 @@
 package ru.valera.presentation.post;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -67,9 +68,37 @@ public class PostController {
                 .body(image);
     }
 
-    @GetMapping(value = "/posts/{id}/comments")
-    public Collection<CommentDto> getComments(@PathVariable Long id) {
-        return null;
+    @GetMapping(value = "/posts/{postId}/comments")
+    public Collection<CommentDto> getComments(@PathVariable Long postId) {
+        return postService.getComments(postId);
     }
 
+    @GetMapping(value = "posts/{postId}/comments/{commentId}")
+    public CommentDto getComment(@PathVariable Long postId, @PathVariable Long commentId) {
+        try {
+            return postService.getComment(postId, commentId);}
+        catch (Exception e) {
+            return null;
+        }
+    }
+
+    @PutMapping(value = "/posts/{postId}/comments/{commentId}")
+    public CommentDto updateComment(@PathVariable Long postId, @PathVariable Long commentId, @RequestBody CommentDto commentDto) {
+        return postService.updateComment(postId, commentId, commentDto);
+    }
+
+    @PostMapping(value = "/posts/{postId}/comments")
+    public CommentDto createComment(@PathVariable Long postId, @RequestBody CommentDto commentDto) {
+        return postService.addComment(postId, commentDto);
+    }
+
+    @DeleteMapping(value = "/posts/{postId}/comments/{commentId}")
+    public ResponseEntity<String> deleteComment(@PathVariable Long postId, @PathVariable Long commentId) {
+        try {
+            postService.deleteComment(postId, commentId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
 }

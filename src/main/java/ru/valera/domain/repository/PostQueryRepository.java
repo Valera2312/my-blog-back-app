@@ -8,8 +8,7 @@ import ru.valera.domain.post.PostId;
 import java.util.List;
 
 public interface PostQueryRepository {
-    int countComments(PostId postId);
-    Comment findComment(PostId postId, CommentId page);
+    Comment findComment(PostId postId, CommentId id);
     List<Comment> findComments(PostId postId);
     Image findImage(PostId postId);
 }

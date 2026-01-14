@@ -30,29 +30,14 @@ public class JdbcPostQueryRepository implements PostQueryRepository {
     }
 
     @Override
-    public int countComments(PostId postId) {
-        String sql = "SELECT COUNT(*) FROM comments WHERE post_id = ?";
-        Connection conn = getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, postId.getValue());
-            ResultSet rs = ps.executeQuery();
-            rs.next();
-            return rs.getInt(1);
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public Comment findComment(PostId postId, CommentId page) {
+    public Comment findComment(PostId postId, CommentId commentId) {
         String sql = "SELECT id, post_id, text FROM comments WHERE post_id = ? AND id = ?";
         Connection conn = getConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, postId.getValue());
-            ps.setLong(2, page.getValue());
+            ps.setLong(2, commentId.getValue());
             ResultSet rs = ps.executeQuery();
-
+            rs.next();
             Long id = rs.getLong("id");
             String text = rs.getString("text");
             return Comment.create(CommentId.of(id), text);

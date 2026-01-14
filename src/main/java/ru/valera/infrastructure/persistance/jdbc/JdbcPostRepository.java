@@ -76,7 +76,7 @@ public class JdbcPostRepository implements PostRepository {
             Post base = loadPost(conn, id.getValue());
             if (base == null) return Optional.empty();
 
-            //List<Comment> comments = loadComments(conn, id.getValue());
+            List<Comment> comments = loadComments(conn, id.getValue());
             Set<Tag> tags = loadTags(conn, id.getValue());
             //Image image = loadImage(conn, id.getValue());
 
@@ -89,7 +89,7 @@ public class JdbcPostRepository implements PostRepository {
                     base.getCreatedAt(),
                     base.getUpdatedAt(),
                     null,
-                    List.of(),
+                    comments,
                     tags
             ));
         } catch (SQLException e) {
@@ -225,19 +225,62 @@ public class JdbcPostRepository implements PostRepository {
     }
 
     private void persistComments(Connection conn, Post post) throws SQLException {
-        try (PreparedStatement delete = conn.prepareStatement("DELETE FROM comments WHERE post_id = ?")) {
-            delete.setLong(1, post.getId().getValue());
+        long postId = post.getId().getValue();
+
+        try (PreparedStatement delete = conn.prepareStatement(
+                "DELETE FROM comments WHERE post_id = ?")) {
+            delete.setLong(1, postId);
             delete.executeUpdate();
         }
-        try (PreparedStatement insert = conn.prepareStatement(
-                "INSERT INTO comments(id, post_id, text) VALUES (?, ?, ?)")) {
-            for (Comment c : post.getComments()) {
-                insert.setLong(1, c.getId().getValue());
-                insert.setLong(2, post.getId().getValue());
-                insert.setString(3, c.getText());
-                insert.addBatch();
+
+        List<Comment> newComments = post.getComments().stream()
+                .filter(c -> c.getId() == null)
+                .toList();
+
+        List<Comment> existingComments = post.getComments().stream()
+                .filter(c -> c.getId() != null)
+                .toList();
+
+        if (!existingComments.isEmpty()) {
+            try (PreparedStatement insertWithId = conn.prepareStatement(
+                    "INSERT INTO comments(id, post_id, text) VALUES (?, ?, ?)")) {
+                for (Comment c : existingComments) {
+                    insertWithId.setLong(1, c.getId().getValue());
+                    insertWithId.setLong(2, postId);
+                    insertWithId.setString(3, c.getText());
+                    insertWithId.addBatch();
+                }
+                insertWithId.executeBatch();
             }
-            insert.executeBatch();
+        }
+        if (!newComments.isEmpty()) {
+            StringBuilder sql = new StringBuilder(
+                    "INSERT INTO comments(post_id, text) VALUES ");
+
+            for (int i = 0; i < newComments.size(); i++) {
+                sql.append("(?, ?)");
+                if (i < newComments.size() - 1) {
+                    sql.append(", ");
+                }
+            }
+            sql.append(" RETURNING id");
+
+            try (PreparedStatement insertNew = conn.prepareStatement(sql.toString())) {
+                int paramIndex = 1;
+                for (Comment c : newComments) {
+                    insertNew.setLong(paramIndex++, postId);
+                    insertNew.setString(paramIndex++, c.getText());
+                }
+
+                try (ResultSet rs = insertNew.executeQuery()) {
+                    for (Comment c : newComments) {
+                        if (!rs.next()) {
+                            throw new SQLException("No generated key returned for comment");
+                        }
+                        c.assignId(CommentId.of(rs.getLong(1)));
+                    }
+                }
+            }
         }
     }
 
