@@ -11,6 +11,7 @@ build/
 .idea/copilot.data.migration.ask2agent.xml
 .idea/compiler.xml
 .idea/libraries/
+.idea/artifacts
 *.iws
 *.iml
 *.ipr

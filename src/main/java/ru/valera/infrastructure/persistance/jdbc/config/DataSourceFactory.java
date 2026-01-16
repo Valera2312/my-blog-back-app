@@ -16,6 +16,7 @@ public class DataSourceFactory {
         ds.setJdbcUrl(config.getUrl());
         ds.setUsername(config.getUsername());
         ds.setPassword(config.getPassword());
+        ds.setDriverClassName(config.getDriver());
 
         ds.setMaximumPoolSize(10);
         ds.setMinimumIdle(2);

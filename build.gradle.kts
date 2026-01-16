@@ -1,9 +1,9 @@
 plugins {
     id("java")
+    id("war")
 }
 
 val springVersion = "7.0.2"
-val jettyVersion = "12.1.5"
 val jakartaServletVersion = "6.1.0"
 val jacksonVersion = "2.17.2"
 var mapstructVersion = "1.6.3"
@@ -24,10 +24,6 @@ dependencies {
     implementation("org.springframework:spring-jdbc:${springVersion}")
     implementation("org.springframework:spring-context:${springVersion}")
     implementation("org.springframework:spring-webmvc:${springVersion}")
-
-    implementation("org.eclipse.jetty:jetty-server:${jettyVersion}")
-    implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:${jettyVersion}")
-    implementation("org.eclipse.jetty.ee10:jetty-ee10-webapp:${jettyVersion}")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}")

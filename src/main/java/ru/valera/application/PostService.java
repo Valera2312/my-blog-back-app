@@ -2,6 +2,8 @@ package ru.valera.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,7 +27,6 @@ import ru.valera.domain.tag.Tag;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -141,7 +142,7 @@ public class PostService {
 
     @Transactional
     public CommentDto updateComment(final Long postId, final Long commentId, final CommentDto commentDto) {
-        Post post = postRepository.findById(PostId.of(postId))
+        Post post = postRepository.findById(PostId.of(commentDto.postId()))
                 .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
         post.editComment(commentMapper.toComment(commentDto));
         postRepository.save(post);
@@ -182,9 +183,9 @@ public class PostService {
 
     private static byte[] findFile(String fileName) {
         try {
-            Path targetPath = pathTraversalProtection(fileName);
-            return Files.readAllBytes(targetPath);
-        } catch (URISyntaxException | IOException e) {
+            Resource resource = new ClassPathResource("images/" + fileName);
+            return resource.getInputStream().readAllBytes();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
