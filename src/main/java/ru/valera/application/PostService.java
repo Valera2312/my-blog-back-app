@@ -2,7 +2,7 @@ package ru.valera.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +24,8 @@ import ru.valera.domain.search.PostSearchCriteria;
 import ru.valera.domain.search.TagName;
 import ru.valera.domain.tag.Tag;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -41,6 +40,8 @@ public class PostService {
     private final PostQueryRepository  postQueryRepository;
     private final PostMapper postMapper;
     private final CommentMapper commentMapper;
+    @Value("classpath:images")
+    private Resource imagesDir;
 
     @Transactional
     public PostDto createPost(final PostDto postDto) {
@@ -112,8 +113,8 @@ public class PostService {
         post.updateImage(image.getOriginalFilename());
         postRepository.save(post);
         try {
-            saveBytesToFile(image.getOriginalFilename(), image.getBytes());
-        } catch (IOException | URISyntaxException e) {
+            saveImage(image.getOriginalFilename(), image.getBytes());
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -122,8 +123,9 @@ public class PostService {
     public byte[] getImage(final Long postId) {
         final Optional<Image> image = postQueryRepository.findImage(PostId.of(postId));
         return image
-               .map(image1 -> findFile(image1.getUrl()))
-               .orElse(new byte[]{});
+                .map(Image::getUrl)
+                .flatMap(this::loadImage)
+                .orElseThrow(() -> new ImageNotFoundException("Image not found for post " + postId));
     }
 
     @Transactional(readOnly = true)
@@ -181,34 +183,48 @@ public class PostService {
                 .collect(Collectors.toSet());
     }
 
-    private static byte[] findFile(String fileName) {
+    private Path getProtectedPath(String fileName) throws IOException {
+        Path basePath = Paths.get(imagesDir.getURI());
+        Path targetPath = basePath.resolve(fileName).normalize();
+
+        // Проверка на path traversal
+        if (!targetPath.startsWith(basePath)) {
+            throw new SecurityException("Path traversal attempt: " + fileName);
+        }
+
+        return targetPath;
+    }
+
+    public void saveImage(String fileName, byte[] data) {
+        Path targetPath;
         try {
-            Resource resource = new ClassPathResource("images/" + fileName);
-            return resource.getInputStream().readAllBytes();
+            targetPath = getProtectedPath(fileName);
+            Files.createDirectories(targetPath.getParent());
+            Files.write(targetPath, data);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        log.info("Image successfully saved: {}", fileName);
+    }
+
+    public Optional<byte[]> loadImage(String fileName) {
+        try {
+            Path targetPath = getProtectedPath(fileName);
+            if (Files.exists(targetPath)) {
+                return Optional.of(Files.readAllBytes(targetPath));
+            }
+            return Optional.empty();
+        } catch (SecurityException e) {
+            log.warn("Security exception for file: {}", fileName);
+            return Optional.empty();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static Path pathTraversalProtection(String fileName) throws URISyntaxException, IOException {
-        Path path = Paths.get(
-                Objects.requireNonNull(
-                        PostService.class.getClassLoader().getResource("images")).toURI());
-        Path realBaseDir = Paths.get(path.toUri()).toRealPath();
-        Path targetPath = realBaseDir.resolve(Objects.requireNonNull(fileName)).normalize();
-        if (!targetPath.startsWith(realBaseDir)) {
-            throw new SecurityException("Path traversal attempt: " + fileName);
-        }
-        return targetPath;
-    }
-
-    private static void saveBytesToFile(String fileName, byte[] data) throws IOException, URISyntaxException {
-        Path targetPath = pathTraversalProtection(fileName);
-        try (FileOutputStream fos = new FileOutputStream(targetPath.toString())) {
-            fos.write(data);
-            System.out.println("Image successfully saved: " + fileName);
-        } catch (IOException e) {
-           log.error(e.getMessage());
+    public static class ImageNotFoundException extends RuntimeException {
+        public ImageNotFoundException(String message) {
+            super(message);
         }
     }
 }
