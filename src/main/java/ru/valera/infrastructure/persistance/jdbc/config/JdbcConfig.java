@@ -20,4 +20,6 @@ public class JdbcConfig {
     String password;
     @Value("${db.driver}")
     String driver;
+    @Value("${db.schema}")
+    String schema;
 }
