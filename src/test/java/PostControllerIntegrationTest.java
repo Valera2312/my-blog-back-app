@@ -50,7 +50,7 @@ public class PostControllerIntegrationTest {
 
         postService.createPost(
                 new ru.valera.application.dto.PostDto(
-                        0,
+                        null,
                         "Название поста 1",
                         "Текст поста в формате Markdown...",
                         java.util.Set.of("tag_1", "tag_2"),
@@ -166,7 +166,7 @@ public class PostControllerIntegrationTest {
         for (int i = 3; i <= 8; i++) {
             postService.createPost(
                     new ru.valera.application.dto.PostDto(
-                            0,
+                            null,
                             "Название поста " + i,
                             "Текст поста в формате Markdown...",
                             java.util.Set.of("tag_1", "tag_2"),
@@ -307,7 +307,7 @@ public class PostControllerIntegrationTest {
                 .accept(MediaType.APPLICATION_JSON);
 
         mockMvc.perform(getRequest)
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isNotFound());
     }
 
     @Test

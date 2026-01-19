@@ -1,9 +1,6 @@
 package ru.valera.application;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,36 +9,40 @@ import ru.valera.application.dto.PageResultDto;
 import ru.valera.application.dto.PostDto;
 import ru.valera.application.mapper.CommentMapper;
 import ru.valera.application.mapper.PostMapper;
+import ru.valera.application.pagination.PaginationService;
+import ru.valera.application.search.SearchQueryParser;
 import ru.valera.domain.Image.Image;
+import ru.valera.domain.Image.ImageNotFoundException;
 import ru.valera.domain.comment.Comment;
 import ru.valera.domain.comment.CommentId;
 import ru.valera.domain.post.Post;
 import ru.valera.domain.post.PostId;
+import ru.valera.domain.post.PostNotFoundException;
 import ru.valera.domain.repository.PostQueryRepository;
 import ru.valera.domain.repository.PostRepository;
 import ru.valera.domain.search.PageRequest;
 import ru.valera.domain.search.PostSearchCriteria;
-import ru.valera.domain.search.TagName;
+import ru.valera.domain.storage.ImageStorage;
 import ru.valera.domain.tag.Tag;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PostService {
 
     private final PostRepository postRepository;
-    private final PostQueryRepository  postQueryRepository;
+    private final PostQueryRepository postQueryRepository;
     private final PostMapper postMapper;
     private final CommentMapper commentMapper;
-    @Value("classpath:images")
-    private Resource imagesDir;
+    private final ImageStorage imageStorage;
+    private final SearchQueryParser searchQueryParser;
+    private final PaginationService paginationService;
 
     @Transactional
     public PostDto createPost(final PostDto postDto) {
@@ -52,38 +53,28 @@ public class PostService {
     @Transactional(readOnly = true)
     public PostDto getPostById(final Long postId) {
         Post post = postRepository.findById(PostId.of(postId))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         return postMapper.toPostDto(post);
     }
 
     @Transactional(readOnly = true)
     public PageResultDto<PostDto> getPosts(final String search, final int pageNumber, final int pageSize) {
         PageRequest page = PageRequest.of(pageNumber, pageSize);
-        PostSearchCriteria criteria = new PostSearchCriteria(extractTitles(search), extractTags(search));
+        PostSearchCriteria criteria = searchQueryParser.parse(search);
+        
         List<PostDto> postDtos = postRepository
                 .findBy(criteria, page).stream()
                 .map(postMapper::toPostDto)
                 .toList();
+        
         long total = postRepository.countBy(criteria);
-        long lastPage = (long) Math.ceil((double) total / page.size());
-        boolean hasPrev = page.page() > 1;
-        boolean hasNext = page.page() < lastPage;
-        if (lastPage == page.page()) {
-            hasPrev = false;
-            hasNext = false;
-        }
-        return PageResultDto.<PostDto>builder()
-                .posts(postDtos)
-                .lastPage(lastPage)
-                .hasPrev(hasPrev)
-                .hasNext(hasNext)
-                .build();
+        return paginationService.createPageResult(postDtos, total, page);
     }
 
     @Transactional
     public PostDto updatePost(final Long postId, final PostDto postDto) {
         Post post = postRepository.findById(PostId.of(postId))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         Set<Tag> tags = postDto.tags()
                 .stream()
                 .map(tag -> Tag.create(null, tag))
@@ -100,7 +91,7 @@ public class PostService {
     @Transactional
     public long like(final Long postId) {
         Post post = postRepository.findById(PostId.of(postId))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         post.like();
         postRepository.save(post);
         return post.getLikesCount();
@@ -109,13 +100,13 @@ public class PostService {
     @Transactional
     public void updateImage(final Long postId, final MultipartFile image) {
         Post post = postRepository.findById(PostId.of(postId))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         post.updateImage(image.getOriginalFilename());
         postRepository.save(post);
         try {
-            saveImage(image.getOriginalFilename(), image.getBytes());
+            imageStorage.save(image.getOriginalFilename(), image.getBytes());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ImageStorage.StorageException("Failed to save image", e);
         }
     }
 
@@ -124,7 +115,7 @@ public class PostService {
         final Optional<Image> image = postQueryRepository.findImage(PostId.of(postId));
         return image
                 .map(Image::getUrl)
-                .flatMap(this::loadImage)
+                .flatMap(imageStorage::load)
                 .orElseThrow(() -> new ImageNotFoundException("Image not found for post " + postId));
     }
 
@@ -145,7 +136,7 @@ public class PostService {
     @Transactional
     public CommentDto updateComment(final Long postId, final Long commentId, final CommentDto commentDto) {
         Post post = postRepository.findById(PostId.of(commentDto.postId()))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         post.editComment(commentMapper.toComment(commentDto));
         postRepository.save(post);
         return commentDto;
@@ -154,7 +145,7 @@ public class PostService {
     @Transactional
     public CommentDto addComment(final Long postId, final CommentDto commentDto) {
         Post post = postRepository.findById(PostId.of(postId))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         Comment comment = post.addComment(commentDto.text());
         postRepository.save(post);
         return commentMapper.toCommentDto(comment, postId);
@@ -163,68 +154,8 @@ public class PostService {
     @Transactional
     public void deleteComment(final Long postId, final Long commentId) {
         Post post = postRepository.findById(PostId.of(postId))
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         post.removeComment(CommentId.of(commentId));
         postRepository.save(post);
-    }
-
-    private Set<String> extractTitles(String search) {
-        return Arrays.stream(search.split("\\s+"))
-                .filter(s -> !s.startsWith("#"))
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
-    }
-
-    private static Set<TagName> extractTags(String search) {
-        return Arrays.stream(search.split("\\s+"))
-                .filter(s -> s.startsWith("#"))
-                .map(s -> s.substring(1))
-                .map(TagName::new)
-                .collect(Collectors.toSet());
-    }
-
-    private Path getProtectedPath(String fileName) throws IOException {
-        Path basePath = Paths.get(imagesDir.getURI());
-        Path targetPath = basePath.resolve(fileName).normalize();
-
-        // Проверка на path traversal
-        if (!targetPath.startsWith(basePath)) {
-            throw new SecurityException("Path traversal attempt: " + fileName);
-        }
-
-        return targetPath;
-    }
-
-    public void saveImage(String fileName, byte[] data) {
-        Path targetPath;
-        try {
-            targetPath = getProtectedPath(fileName);
-            Files.createDirectories(targetPath.getParent());
-            Files.write(targetPath, data);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        log.info("Image successfully saved: {}", fileName);
-    }
-
-    public Optional<byte[]> loadImage(String fileName) {
-        try {
-            Path targetPath = getProtectedPath(fileName);
-            if (Files.exists(targetPath)) {
-                return Optional.of(Files.readAllBytes(targetPath));
-            }
-            return Optional.empty();
-        } catch (SecurityException e) {
-            log.warn("Security exception for file: {}", fileName);
-            return Optional.empty();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static class ImageNotFoundException extends RuntimeException {
-        public ImageNotFoundException(String message) {
-            super(message);
-        }
     }
 }
