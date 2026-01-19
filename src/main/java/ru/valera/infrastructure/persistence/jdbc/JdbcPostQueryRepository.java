@@ -1,4 +1,4 @@
-package ru.valera.infrastructure.persistance.jdbc;
+package ru.valera.infrastructure.persistence.jdbc;
 
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;

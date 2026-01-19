@@ -1,4 +1,4 @@
-package ru.valera.infrastructure.persistance.jdbc;
+package ru.valera.infrastructure.persistence.jdbc;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -362,7 +362,7 @@ public class JdbcPostRepository implements PostRepository {
     public long countBy(PostSearchCriteria criteria) {
 
         StringBuilder sql = new StringBuilder("""
-                SELECT COUNT(*)
+                SELECT COUNT(DISTINCT p.id)
                 FROM posts p
                 LEFT JOIN post_tags pt ON pt.post_id = p.id
                 LEFT JOIN tags t ON t.id = pt.tag_id

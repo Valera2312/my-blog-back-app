@@ -1,4 +1,4 @@
-package ru.valera.infrastructure.persistance.jdbc.config;
+package ru.valera.infrastructure.persistence.jdbc.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

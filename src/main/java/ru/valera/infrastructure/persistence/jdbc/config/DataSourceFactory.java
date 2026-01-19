@@ -1,4 +1,4 @@
-package ru.valera.infrastructure.persistance.jdbc.config;
+package ru.valera.infrastructure.persistence.jdbc.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +14,7 @@ import javax.sql.DataSource;
 @Configuration
 public class DataSourceFactory {
 
-    @Value("classpath:blog_init.sql")
+    @Value("${db.init.sql}")
     Resource resource;
 
     @Bean
@@ -25,8 +25,9 @@ public class DataSourceFactory {
         ds.setUsername(config.getUsername());
         ds.setPassword(config.getPassword());
         ds.setDriverClassName(config.getDriver());
-        ds.setSchema(config.getSchema());
-
+        if (config.getSchema() != null && !config.getSchema().isBlank()) {
+            ds.setSchema(config.getSchema());
+        }
         ds.setMaximumPoolSize(10);
         ds.setMinimumIdle(2);
         ds.setConnectionTimeout(3000);
