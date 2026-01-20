@@ -65,3 +65,6 @@ java {
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
 }
+tasks.war {
+    archiveFileName.set("ROOT.war")
+}
